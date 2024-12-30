@@ -53,7 +53,7 @@ def scrape_twitter_trending():
                 )
             )
 
-            time.sleep(10)  # Sleep for 2 seconds to ensure the content is fully loaded
+            time.sleep(3)  # Sleep for 3 seconds to ensure the content is fully loaded
 
             page_source = driver.page_source
 
@@ -80,6 +80,10 @@ def scrape_twitter_trending():
 
         return record
     except NoSuchElementException as e:
-        print(f"Element not found: {e}")
+        logging.error(f"Element not found: {e}")
+        return {"error": f"Element not found: {e}"}
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        return {"error": f"Unexpected error: {e}"}
     finally:
         driver.quit()
