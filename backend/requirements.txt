@@ -4,5 +4,6 @@ selenium==4.27.1
 python-dotenv==1.0.1
 pymongo[snappy,gssapi,srv,tls]
 dnspython==2.7.0
-requests
 django-cors-headers
+selenium-wire
+blinker==1.7.0

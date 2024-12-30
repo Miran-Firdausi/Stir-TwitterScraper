@@ -1,6 +1,8 @@
-import json
 import os
-from selenium import webdriver
+import json
+import logging
+import time
+from seleniumwire import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -20,58 +22,52 @@ password = os.getenv("TWITTER_PASSWORD")
 
 
 def scrape_twitter_trending():
-    options = webdriver.ChromeOptions()
-    options.add_argument(f"--proxy-server=http://{proxy}")
-    options.add_argument(f"--proxy-auth={proxy_user}:{proxy_pass}")
+    options = {
+        "proxy": {
+            "http": f"http://{proxy_user}:{proxy_pass}@{proxy}",
+            "https": f"https://{proxy_user}:{proxy_pass}@{proxy}",
+            "no_proxy": "localhost,127.0.0.1",  # Excludes these from proxying
+        }
+    }
 
-    driver = webdriver.Chrome()
+    driver = webdriver.Chrome(seleniumwire_options=options)
     try:
         # Navigate to Twitter
-        # driver.get("https://x.com/login")
+        driver.get("https://x.com/login")
 
         # Login
-        # WebDriverWait(driver, 10).until(
-        #     EC.presence_of_element_located((By.NAME, "text"))
-        # ).send_keys(username, Keys.RETURN)
-        # WebDriverWait(driver, 10).until(
-        #     EC.presence_of_element_located((By.NAME, "password"))
-        # ).send_keys(password, Keys.RETURN)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "text"))
+        ).send_keys(username, Keys.RETURN)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "password"))
+        ).send_keys(password, Keys.RETURN)
 
         # Navigate to Explore/Trending
-        # driver.get("https://x.com/explore/tabs/trending")
+        driver.get("https://x.com/explore/tabs/trending")
 
-        max_retries = 3
-        retries = 0
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located(
+                    (By.CSS_SELECTOR, "span.r-18u37iz span.css-1jxf684")
+                )
+            )
 
-        # while retries < max_retries:
-        #     try:
-        #         retry_button = WebDriverWait(driver, 100).until(
-        #             EC.presence_of_element_located(
-        #                 (By.XPATH, '//button[contains(text(), "Retry")]')
-        #             )
-        #         )
-        #         retry_button.click()
-        #         retries += 1
-        #         print(f"Retry attempt {retries}.")
-        #     except TimeoutException:
-        #         break
+            time.sleep(10)  # Sleep for 2 seconds to ensure the content is fully loaded
 
-        # page_source = driver.page_source
-        file_path = os.path.join(os.path.dirname(__file__), "page_source.html")
-        with open(file_path, "r", encoding="utf-8") as file:
-            page_source = file.read()
+            page_source = driver.page_source
 
-        # Scrape top 5 trending topics
-        topics = []
-        soup = BeautifulSoup(page_source, "html.parser")
-        elements = soup.select("span.r-18u37iz span.css-1jxf684")
-        # elements = WebDriverWait(driver, 100).until(
-        #     EC.presence_of_all_elements_located(
-        #         (By.XPATH, '//span[contains(@class, "css-901oao")]')
-        #     )
-        # )
-        for element in elements[:5]:
-            topics.append({"name": element.text})
+        except TimeoutException:
+            logging.error("TimeoutException: Element not found")
+
+        if page_source:
+            # Scrape top 5 trending topics
+            topics = []
+            soup = BeautifulSoup(page_source, "html.parser")
+            elements = soup.select("span.r-18u37iz span.css-1jxf684")
+
+            for element in elements[:5]:
+                topics.append({"name": element.text})
 
         driver.get("https://api.ipify.org?format=json")
         wait = WebDriverWait(driver, 10)
